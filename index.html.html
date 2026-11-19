@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Writing Lab: Sentence Combining</title>
+  <style>
+    :root {
+      --bg-canvas: #FAF9F6;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F3F2EE;
+      --ink-primary: #1E293B;
+      --ink-secondary: #475569;
+      --ink-muted: #64748B;
+      --border-soft: #E2E8F0;
+
+      /* Stage Semantic Tokens */
+      --stage-main: #0284C7;
+      --stage-soft: #E0F2FE;
+      --stage-border: #BAE6FD;
+      --stage-ink: #0369A1;
+
+      /* Syntax Role Tokens */
+      --time-main: #0284C7;
+      --time-soft: #E0F2FE;
+      --place-main: #059669;
+      --place-soft: #D1FAE5;
+      --mixed-main: #7C3AED;
+      --mixed-soft: #EDE9FE;
+      --app-main: #D97706;
+      --app-soft: #FEF3C7;
+      --part-main: #E11D48;
+      --part-soft: #FFE4E6;
+    }
+
+    body[data-stage="place"] {
+      --stage-main: #059669;
+      --stage-soft: #D1FAE5;
+      --stage-border: #A7F3D0;
+      --stage-ink: #047857;
+    }
+
+    body[data-stage="mixed"] {
+      --stage-main: #7C3AED;
+      --stage-soft: #EDE9FE;
+      --stage-border: #DDD6FE;
+      --stage-ink: #6D28D9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    svg {
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-canvas);
+      color: var(--ink-primary);
+      line-height: 1.55;
+      min-height: 100vh;
+      padding: 20px 16px 48px;
+      transition: background-color 0.3s ease;
+    }
+
+    .shell {
+      max-width: 672px; /* max-w-2xl */
+      margin: 0 auto;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--stage-soft);
+      color: var(--stage-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s ease;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink-primary);
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-card);
+      color: var(--ink-secondary);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .pill-btn:hover {
+      border-color: #CBD5E1;
+      color: var(--ink-primary);
+      background: #F8FAFC;
+    }
+
+    .pill-btn.restart-btn:hover {
+      border-color: #FCA5A5;
+      background: #FEF2F2;
+      color: #B91C1C;
+    }
+
+    .pill-btn.saved-btn {
+      background: var(--stage-soft);
+      border-color: var(--stage-border);
+      color: var(--stage-ink);
+    }
+
+    /* Stage Stepper */
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .step-chip {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink-muted);
+      transition: all 0.25s ease;
+    }
+
+    .step-chip.active {
+      border-color: var(--stage-main);
+      background: var(--stage-soft);
+      color: var(--stage-ink);
+    }
+
+    .step-chip.done {
+      color: var(--ink-secondary);
+      background: #F8FAFC;
+    }
+
+    .step-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #CBD5E1;
+      flex-shrink: 0;
+    }
+
+    .step-chip[data-s="time"].active .step-dot { background: var(--time-main); }
+    .step-chip[data-s="place"].active .step-dot { background: var(--place-main); }
+    .step-chip[data-s="mixed"].active .step-dot { background: var(--mixed-main); }
+    .step-chip.done .step-dot { background: #10B981; }
+
+    /* Main Workspace Card */
+    .card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .q-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--stage-ink);
+      background: var(--stage-soft);
+      border: 1px solid var(--stage-border);
+      padding: 5px 12px;
+      border-radius: 999px;
+    }
+
+    .subject-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-primary);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-soft);
+      padding: 5px 12px;
+      border-radius: 999px;
+    }
+
+    /* Required Moves Strip */
+    .moves-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .moves-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-muted);
+      margin-right: 2px;
+    }
+
+    .role-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .role-time { background: var(--time-soft); color: #0369A1; }
+    .role-place { background: var(--place-soft); color: #047857; }
+    .role-mixed { background: var(--mixed-soft); color: #6D28D9; }
+    .role-app { background: var(--app-soft); color: #B45309; }
+    .role-part { background: var(--part-soft); color: #BE123C; }
+
+    /* Milestone Banner (Q3 Participial Unlock) */
+    .milestone-pill {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: var(--part-soft);
+      border: 1.5px solid #FECDD3;
+      color: #BE123C;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 13px;
+      border-radius: 11px;
+      margin-bottom: 14px;
+    }
+
+    .milestone-pill.visible {
+      display: flex;
+    }
+
+    /* Always-Visible Formula Pill */
+    .formula-banner {
+      background: var(--bg-canvas);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--ink-primary);
+      line-height: 1.75;
+    }
+
+    /* Chunked Sentence Strips */
+    .sentences-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .sentence-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-canvas);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .strip-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: var(--stage-soft);
+      color: var(--stage-ink);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .strip-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink-primary);
+    }
+
+    /* Collapsible Helper Drawers */
+    .helper-toggles {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9px;
+      border: 1px dashed #CBD5E1;
+      background: transparent;
+      color: var(--ink-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .toggle-chip:hover, .toggle-chip.active {
+      background: var(--bg-subtle);
+      border-style: solid;
+      color: var(--ink-primary);
+    }
+
+    .drawer {
+      display: none;
+      background: var(--bg-canvas);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+    }
+
+    .drawer.open {
+      display: block;
+    }
+
+    .formula-line {
+      font-weight: 700;
+      color: var(--ink-primary);
+      margin-bottom: 8px;
+      line-height: 1.7;
+    }
+
+    .hl-time { background: var(--time-soft); color: #0369A1; padding: 2px 6px; border-radius: 5px; }
+    .hl-place { background: var(--place-soft); color: #047857; padding: 2px 6px; border-radius: 5px; }
+    .hl-mixed { background: var(--mixed-soft); color: #6D28D9; padding: 2px 6px; border-radius: 5px; }
+    .hl-app { background: var(--app-soft); color: #B45309; padding: 2px 6px; border-radius: 5px; }
+    .hl-part { background: var(--part-soft); color: #BE123C; padding: 2px 6px; border-radius: 5px; }
+
+    .word-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .word-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--stage-border);
+      color: var(--stage-ink);
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .word-chip:hover {
+      background: var(--stage-soft);
+      transform: translateY(-1px);
+    }
+
+    /* Input Area */
+    .input-wrap {
+      margin-bottom: 14px;
+    }
+
+    .input-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-secondary);
+      margin-bottom: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 92px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid var(--border-soft);
+      background: #FFFFFF;
+      color: var(--ink-primary);
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.5;
+      resize: vertical;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--stage-main);
+      box-shadow: 0 0 0 4px var(--stage-soft);
+    }
+
+    /* Action Row */
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border-soft);
+      background: var(--bg-card);
+      color: var(--ink-secondary);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      color: var(--ink-primary);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 12px;
+      border: none;
+      background: var(--stage-main);
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.22);
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-next {
+      background: #059669;
+      box-shadow: 0 2px 10px rgba(5, 150, 105, 0.25);
+    }
+
+    /* Prescriptive Feedback Panel */
+    .feedback-panel {
+      display: none;
+      margin-top: 18px;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 14.5px;
+    }
+
+    .feedback-panel.visible {
+      display: block;
+    }
+
+    .feedback-panel.pass {
+      background: #ECFDF5;
+      border: 1.5px solid #A7F3D0;
+      color: #065F46;
+    }
+
+    .feedback-panel.fail {
+      background: #FFFBEB;
+      border: 1.5px solid #FDE68A;
+      color: #78350F;
+    }
+
+    .fb-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .fb-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .fb-list li {
+      line-height: 1.5;
+    }
+
+    .fb-tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-right: 6px;
+    }
+
+    .fb-tag.good { background: #D1FAE5; color: #065F46; }
+    .fb-tag.fix { background: #FEE2E2; color: #991B1B; }
+    .fb-tag.next { background: #E0F2FE; color: #075985; }
+
+    /* Modals (Dramatic Stage Shift & Saved Log) */
+    .backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #FFFFFF;
+      border-radius: 22px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 26px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+      border: 2px solid var(--place-main);
+    }
+
+    .modal-card.saved-modal {
+      border-color: var(--border-soft);
+    }
+
+    .shift-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--place-soft);
+      color: #047857;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+
+    .shift-title {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--ink-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .shift-desc {
+      font-size: 15px;
+      color: var(--ink-secondary);
+      margin-bottom: 18px;
+    }
+
+    .shift-compare {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: var(--bg-canvas);
+      border: 1.5px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 18px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .model-box {
+      background: #F8FAFC;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .model-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+
+    .model-choppy {
+      font-size: 13.5px;
+      color: var(--ink-secondary);
+      margin-bottom: 8px;
+    }
+
+    .model-combined {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink-primary);
+      line-height: 1.6;
+    }
+
+    .saved-item {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      font-size: 14.5px;
+    }
+
+    .saved-meta {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--stage-ink);
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 540px) {
+      .card { padding: 18px; }
+      .stepper { grid-template-columns: 1fr; }
+      .action-row { flex-direction: column; align-items: stretch; }
+      .btn-primary, .btn-secondary { justify-content: center; }
+    }
+  </style>
+</head>
+<body data-stage="time">
+
+  <div class="shell">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Writing Lab: Sentence Combining</div>
+          <div class="brand-sub">Unified Subject + Prepositional Openers</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="pill-btn" onclick="openShiftModal(true)" title="Preview the Time to Place stage shift">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+          <span>Preview Shift</span>
+        </button>
+
+        <button type="button" class="pill-btn restart-btn" onclick="restartSession()" title="Reset back to Question 1">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+          <span>Restart</span>
+        </button>
+
+        <button type="button" class="pill-btn saved-btn" onclick="openSavedModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span id="saved-counter">Saved: 0/6</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 3-Stage Visual Progress -->
+    <nav class="stepper" aria-label="Skill progression">
+      <div class="step-chip active" id="step-time" data-s="time">
+        <span class="step-dot"></span>
+        <span>1. Time Openers (Q1–3)</span>
+      </div>
+      <div class="step-chip" id="step-place" data-s="place">
+        <span class="step-dot"></span>
+        <span>2. Place Openers (Q4–6)</span>
+      </div>
+      <div class="step-chip" id="step-mixed" data-s="mixed">
+        <span class="step-dot"></span>
+        <span>3. Mixed Time + Place (Q7+)</span>
+      </div>
+    </nav>
+
+    <!-- Main Single-Column Card -->
+    <main class="card">
+      <div class="card-top">
+        <span class="q-badge" id="q-badge">Question 1 &bull; Stage 1: Time</span>
+        <span class="subject-badge" id="subject-badge">Subject: Leo</span>
+      </div>
+
+      <!-- Color-Coded Required Moves -->
+      <div class="moves-bar" id="moves-bar"></div>
+
+      <!-- Q3 Participial Phrase Unlock Milestone -->
+      <div class="milestone-pill" id="milestone-pill" role="status">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>New Move Unlocked: Participial Phrase &mdash; Turn the 4th sentence into an <em>-ing / -ed</em> verb phrase attached to the subject!</span>
+      </div>
+
+      <!-- Always-Visible Color-Coded Formula Pill -->
+      <div class="formula-banner" id="formula-banner"></div>
+
+      <!-- 3 Chunked Source Sentences -->
+      <div class="sentences-stack" id="sentences-stack"></div>
+
+      <!-- Progressive Disclosure Helper Toggles -->
+      <div class="helper-toggles">
+        <button type="button" class="toggle-chip" id="btn-formula" onclick="toggleDrawer('drawer-formula', 'btn-formula')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Starter Words</span>
+        </button>
+
+        <button type="button" class="toggle-chip" id="btn-hint" onclick="toggleDrawer('drawer-hint', 'btn-hint')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6"></path>
+            <path d="M10 22h4"></path>
+            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"></path>
+          </svg>
+          <span>Need a Hint?</span>
+        </button>
+      </div>
+
+      <!-- Formula & Starter Words Drawer -->
+      <div class="drawer" id="drawer-formula">
+        <div style="font-size: 12.5px; font-weight: 700; color: var(--ink-muted);">Click a starter preposition to insert it at the beginning:</div>
+        <div class="word-chips" id="word-chips"></div>
+      </div>
+
+      <!-- Hint Drawer -->
+      <div class="drawer" id="drawer-hint">
+        <div id="hint-content" style="color: var(--ink-primary); font-weight: 600;"></div>
+      </div>
+
+      <!-- Student Sentence Input -->
+      <div class="input-wrap">
+        <label class="input-label" for="student-input">
+          <span>Combine all 3 sentences into ONE smooth sentence:</span>
+          <span id="subject-reminder" style="color: var(--stage-ink);">Keep Leo doing all the action</span>
+        </label>
+        <textarea id="student-input" placeholder="Start with your prepositional opener + comma..."></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button type="button" class="btn-secondary" onclick="swapCurrentPrompt()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span>New Prompt</span>
+        </button>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn-primary" id="btn-check" onclick="evaluateAttempt()">
+            <span>Check Sentence</span>
+          </button>
+
+          <button type="button" class="btn-primary btn-next" id="btn-next" style="display: none;" onclick="advanceQuestion()">
+            <span>Next Question &rarr;</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Prescriptive Feedback Box -->
+      <div class="feedback-panel" id="feedback-panel" role="status" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <!-- Dramatic Stage Shift Modal (Time -> Place) -->
+  <div class="backdrop" id="shift-backdrop" role="dialog" aria-modal="true" aria-labelledby="shift-heading">
+    <div class="modal-card">
+      <div class="shift-banner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span>Dramatic Skill Shift</span>
+      </div>
+
+      <h2 class="shift-title" id="shift-heading">Level Up: From TIME to PLACE Openers!</h2>
+      <p class="shift-desc">
+        You mastered setting the stage with <strong>Time</strong>. Now switch your opener from a <em>clock</em> to a <em>compass</em>—start your sentence with a prepositional phrase of <strong>Place</strong>!
+      </p>
+
+      <div class="shift-compare">
+        <span class="hl-time" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          TIME (Old)
+        </span>
+        <span style="color: var(--ink-muted);">&rarr;</span>
+        <span class="hl-place" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          PLACE + APPOSITIVE (New!)
+        </span>
+      </div>
+
+      <!-- Worked Model 1 -->
+      <div class="model-box">
+        <div class="model-label">Model 1 &bull; Place Opener + Appositive + Participial Phrase</div>
+        <div class="model-choppy">
+          Choppy: <em>Clara discovered a brass key beneath the library floorboards. Clara is a curious archivist. She lifted the heavy oak plank. She examined the engraved lock.</em>
+        </div>
+        <div class="model-combined">
+          <span class="hl-place">Beneath the library floorboards</span>, Clara, <span class="hl-app">a curious archivist</span>, discovered a brass key, <span class="hl-part">examining the engraved lock</span>.
+        </div>
+      </div>
+
+      <!-- Worked Model 2 -->
+      <div class="model-box">
+        <div class="model-label">Model 2 &bull; Place Opener + Appositive + Participial Phrase</div>
+        <div class="model-choppy">
+          Choppy: <em>Julian pruned the rare orchids inside the misty glass conservatory. Julian is the head botanist. He used silver shears. He misted their delicate leaves.</em>
+        </div>
+        <div class="model-combined">
+          <span class="hl-place">Inside the misty glass conservatory</span>, Julian, <span class="hl-app">the head botanist</span>, pruned the rare orchids, <span class="hl-part">misting their delicate leaves</span>.
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
+        <button type="button" class="btn-primary btn-next" onclick="closeShiftModal()">
+          <span>Got It &mdash; Start Place + Appositive + Participial &rarr;</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Sentences & Google Classroom Copy Modal -->
+  <div class="backdrop" id="saved-backdrop" role="dialog" aria-modal="true" aria-labelledby="saved-heading">
+    <div class="modal-card saved-modal">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 class="shift-title" id="saved-heading" style="margin: 0; font-size: 19px;">Mastered Sentences Log</h2>
+        <button type="button" class="pill-btn" onclick="closeSavedModal()">Close</button>
+      </div>
+      <p style="font-size: 13.5px; color: var(--ink-secondary); margin-bottom: 14px;">
+        Goal: Master at least <strong>6 sentences</strong>, then copy your log to turn in on Google Classroom.
+      </p>
+
+      <div id="saved-list-container"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
+        <span id="copy-status" style="font-size: 13px; font-weight: 700; color: #059669;"></span>
+        <button type="button" class="btn-primary" onclick="copyForClassroom()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy for Google Classroom</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CURATED PROMPT BANK (Q1-2: 3 Sentences | Q3+: 4 Sentences w/ Participial)
+    // =========================================================================
+    const PROMPT_BANK = {
+      time: [
+        {
+          id: "t1",
+          subject: "Leo",
+          appositiveIdentity: "the youngest keeper on the coast",
+          moves: ["Time Opener", "Appositive"],
+          sentences: [
+            "Leo unlocked the lighthouse door after midnight.",
+            "Leo is the youngest keeper on the coast.",
+            "Leo checked the rotating beacon."
+          ],
+          hint: "Start with 'After midnight,' then introduce 'Leo, the youngest keeper on the coast,' with commas on both sides before his main action.",
+          keywords: ["lighthouse", "beacon", "keeper"]
+        },
+        {
+          id: "t2",
+          subject: "Nadia",
+          appositiveIdentity: "an observant night-shift baker",
+          moves: ["Time Opener", "Appositive"],
+          sentences: [
+            "Nadia shaped twelve sourdough loaves before sunrise.",
+            "Nadia was an observant night-shift baker.",
+            "Nadia noticed footprints outside the alley window."
+          ],
+          hint: "Open with 'Before sunrise,' rename Nadia with her appositive (', an observant night-shift baker,'), and finish with her action.",
+          keywords: ["sourdough", "loaves", "baker", "footprints"]
+        },
+        {
+          id: "t4",
+          subject: "Priya",
+          appositiveIdentity: "a dedicated amateur astronomer",
+          moves: ["Time Opener", "Appositive"],
+          sentences: [
+            "Priya tracked a faint green comet until dawn.",
+            "Priya is a dedicated amateur astronomer.",
+            "Priya sketched its glowing tail in her notebook."
+          ],
+          hint: "Open with 'Until dawn,' set off 'a dedicated amateur astronomer' between two commas right after Priya, and complete her action.",
+          keywords: ["comet", "astronomer", "notebook", "tail"]
+        },
+        {
+          id: "t5",
+          subject: "Owen",
+          appositiveIdentity: "the theater's veteran technician",
+          moves: ["Time Opener", "Appositive"],
+          sentences: [
+            "Owen tuned the grand piano following the rehearsal.",
+            "Owen is the theater's veteran technician.",
+            "Owen tested every ivory key."
+          ],
+          hint: "Begin with 'Following the rehearsal,' place Owen's appositive (', the theater's veteran technician,') inside commas, and finish with his action.",
+          keywords: ["piano", "technician", "ivory"]
+        }
+      ],
+      time_part: [
+        {
+          id: "tp1",
+          subject: "Mateo",
+          appositiveIdentity: "a patient clockmaker",
+          moves: ["Time Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Mateo repaired the antique pocket watch during the rainstorm.",
+            "Mateo is a patient clockmaker.",
+            "Mateo adjusted the tiny brass gears.",
+            "Mateo squinted through his magnifying loupe."
+          ],
+          hint: "Start with 'During the rainstorm,' write 'Mateo, a patient clockmaker,' with commas on both sides, give his main verb, and turn Sentence 4 into an -ing phrase (', squinting through his magnifying loupe').",
+          keywords: ["watch", "clockmaker", "gears", "loupe"]
+        },
+        {
+          id: "tp2",
+          subject: "Sora",
+          appositiveIdentity: "a diligent marine biologist",
+          moves: ["Time Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Sora tagged three sea turtles before high tide.",
+            "Sora is a diligent marine biologist.",
+            "Sora logged their shell measurements.",
+            "Sora waded carefully through the shallow surf."
+          ],
+          hint: "Open with 'Before high tide,' rename Sora with her appositive (', a diligent marine biologist,'), state her main action, and attach an -ing participial phrase ('wading carefully through the shallow surf').",
+          keywords: ["turtles", "biologist", "measurements", "surf"]
+        },
+        {
+          id: "tp3",
+          subject: "Devon",
+          appositiveIdentity: "a seasoned harbor pilot",
+          moves: ["Time Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Devon guided the cargo ferry after sunset.",
+            "Devon is a seasoned harbor pilot.",
+            "Devon steered past the rocky breakwater.",
+            "Devon sounded the brass foghorn."
+          ],
+          hint: "Start with 'After sunset,' place Devon's appositive inside commas, state his main action, and end with an -ing phrase (', sounding the brass foghorn').",
+          keywords: ["ferry", "pilot", "breakwater", "foghorn"]
+        }
+      ],
+      place: [
+        {
+          id: "p1",
+          subject: "Elena",
+          appositiveIdentity: "a resourceful rooftop beekeeper",
+          moves: ["Place Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Elena inspected the wooden hives behind the stone wall.",
+            "Elena is a resourceful rooftop beekeeper.",
+            "Elena collected jars of wildflower honey.",
+            "Elena calmed the swarm with cool smoke."
+          ],
+          hint: "Start with 'Behind the stone wall,' introduce 'Elena, a resourceful rooftop beekeeper,' with commas on both sides, give her main verb, and turn Sentence 4 into an -ing phrase (', calming the swarm with cool smoke').",
+          keywords: ["hives", "beekeeper", "honey", "smoke"]
+        },
+        {
+          id: "p2",
+          subject: "Samir",
+          appositiveIdentity: "a fearless cave cartographer",
+          moves: ["Place Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Samir measured the crystal stalactites inside the limestone cavern.",
+            "Samir was a fearless cave cartographer.",
+            "Samir mapped the underground river.",
+            "Samir aimed his headlamp across the dark ceiling."
+          ],
+          hint: "Open with 'Inside the limestone cavern,' rename Samir with his appositive (', a fearless cave cartographer,'), give his main action, and add an -ing phrase (', aiming his headlamp across the dark ceiling').",
+          keywords: ["stalactites", "cartographer", "river", "headlamp"]
+        },
+        {
+          id: "p3",
+          subject: "Clara",
+          appositiveIdentity: "the master bookbinder",
+          moves: ["Place Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Clara stitched leather bindings beneath the stained-glass window.",
+            "Clara is the master bookbinder.",
+            "Clara restored the medieval atlas.",
+            "Clara pressed gold leaf onto the spine."
+          ],
+          hint: "Start with 'Beneath the stained-glass window,' set off 'the master bookbinder' with commas around Clara, state her main action, and attach an -ing phrase (', pressing gold leaf onto the spine').",
+          keywords: ["bookbinder", "atlas", "bindings", "spine"]
+        },
+        {
+          id: "p4",
+          subject: "Tessa",
+          appositiveIdentity: "a renowned pastry chef",
+          moves: ["Place Opener", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Tessa measured rare spices inside the bustling market.",
+            "Tessa is a renowned pastry chef.",
+            "Tessa blended cardamom and saffron.",
+            "Tessa tested the aroma of each tin."
+          ],
+          hint: "Open with 'Inside the bustling market,' set off 'a renowned pastry chef' with commas around Tessa, state her main action, and add an -ing phrase (', testing the aroma of each tin').",
+          keywords: ["spices", "chef", "saffron", "tin"]
+        }
+      ],
+      mixed: [
+        {
+          id: "m1",
+          subject: "Jasper",
+          appositiveIdentity: "a tireless astrophysicist",
+          moves: ["Time + Place Openers", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Jasper cataloged rare meteorites at midnight inside the observatory.",
+            "Jasper is a tireless astrophysicist.",
+            "Jasper calibrated the twin lenses.",
+            "Jasper recorded every cosmic streak."
+          ],
+          hint: "Open with Time + Place ('At midnight inside the observatory,'), define Jasper with an appositive (', a tireless astrophysicist,'), give his main verb, and end with an -ing phrase ('recording every cosmic streak').",
+          keywords: ["meteorites", "astrophysicist", "observatory", "streak"]
+        },
+        {
+          id: "m2",
+          subject: "Hannah",
+          appositiveIdentity: "a dedicated urban botanist",
+          moves: ["Time + Place Openers", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Hannah pruned bonsai trees before dawn on the studio balcony.",
+            "Hannah is a dedicated urban botanist.",
+            "Hannah trimmed the twisted branches.",
+            "Hannah misted the delicate leaves."
+          ],
+          hint: "Combine Time + Place at the start ('Before dawn on the studio balcony,'), define Hannah with an appositive, state her main verb, and attach a participial phrase ('misting the delicate leaves').",
+          keywords: ["bonsai", "botanist", "balcony", "leaves"]
+        },
+        {
+          id: "m3",
+          subject: "Marcus",
+          appositiveIdentity: "a classically trained cellist",
+          moves: ["Time + Place Openers", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Marcus practiced Bach suites after dusk beneath the bridge arches.",
+            "Marcus is a classically trained cellist.",
+            "Marcus tuned the low C string.",
+            "Marcus drew a quiet crowd."
+          ],
+          hint: "Start with 'After dusk beneath the bridge arches,' introduce 'Marcus, a classically trained cellist,' give his main verb, and finish with an -ing verb ('drawing a quiet crowd').",
+          keywords: ["cellist", "arches", "crowd", "suites"]
+        },
+        {
+          id: "m4",
+          subject: "Zoe",
+          appositiveIdentity: "an inventive aerospace engineer",
+          moves: ["Time + Place Openers", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Zoe tested solar gliders at sunrise across the salt flats.",
+            "Zoe is an inventive aerospace engineer.",
+            "Zoe launched the prototype into the wind.",
+            "Zoe adjusted the carbon wings."
+          ],
+          hint: "Lead with 'At sunrise across the salt flats,' rename Zoe with her appositive (', an inventive aerospace engineer,'), state her main action, and add an -ing action ('adjusting the carbon wings').",
+          keywords: ["gliders", "engineer", "flats", "wings"]
+        },
+        {
+          id: "m5",
+          subject: "Caleb",
+          appositiveIdentity: "a meticulous forensic linguist",
+          moves: ["Time + Place Openers", "Appositive", "Participial Phrase"],
+          sentences: [
+            "Caleb decoded the ciphered diary during the blackout inside the archive.",
+            "Caleb is a meticulous forensic linguist.",
+            "Caleb cross-checked the ancient alphabet.",
+            "Caleb highlighted repeated symbols."
+          ],
+          hint: "Start with 'During the blackout inside the archive,' add Caleb's appositive (', a meticulous forensic linguist,'), give his main verb, and attach an -ing phrase ('highlighting repeated symbols').",
+          keywords: ["diary", "linguist", "archive", "symbols"]
+        }
+      ]
+    };
+
+    // =========================================================================
+    // GLOBAL STATE & PREPOSITION WORD BANKS
+    // =========================================================================
+    const apiKey = "";
+
+    const TIME_PREPS = [
+      "after", "before", "during", "until", "following", "at", "by", "since", "throughout", "within", "for", "past"
+    ];
+
+    const PLACE_PREPS = [
+      "behind", "inside", "beneath", "across", "along", "above", "against", "around", "below", "beside", "beyond", "near", "outside", "over", "through", "under", "on", "in"
+    ];
+
+    const STARTER_WORDS = {
+      time: ["After", "Before", "During", "Until", "Following", "At", "Throughout"],
+      place: ["Behind", "Inside", "Beneath", "Across", "Along", "Beside", "Outside", "Under"],
+      mixed: ["At midnight inside", "Before dawn on", "After dusk beneath", "At sunrise across", "During the blackout inside"]
+    };
+
+    const state = {
+      qNum: 1,
+      stage: "time",
+      currentPrompt: null,
+      isSolved: false,
+      savedList: [],
+      usedIds: [],
+      previewMode: false
+    };
+
+    function getStageForQuestion(qNum) {
+      if (qNum <= 3) return "time";
+      if (qNum <= 6) return "place";
+      return "mixed";
+    }
+
+    function requiresParticipial(qNum) {
+      return qNum >= 3;
+    }
+
+    function getPoolKey(stage, qNum) {
+      if (stage === "time") {
+        return requiresParticipial(qNum) ? "time_part" : "time";
+      }
+      return stage;
+    }
+
+    function pickPrompt(stage, qNum = state.qNum) {
+      const poolKey = getPoolKey(stage, qNum);
+      const pool = PROMPT_BANK[poolKey];
+      let available = pool.filter(p => !state.usedIds.includes(p.id));
+      if (available.length === 0) {
+        const stageIds = pool.map(p => p.id);
+        state.usedIds = state.usedIds.filter(id => !stageIds.includes(id));
+        available = pool;
+      }
+      const chosen = available[Math.floor(Math.random() * available.length)];
+      state.usedIds.push(chosen.id);
+      return chosen;
+    }
+
+    // Optional live Gemini prompt generator (only called on explicit user action: New Prompt / Next Question)
+    async function fetchGeminiPrompt(stage, qNum = state.qNum) {
+      if (!apiKey) return null;
+      const needPart = requiresParticipial(qNum);
+      let stageSpec = "";
+      if (stage === "time" && !needPart) {
+        stageSpec = "Stage 1 (Q1-2): Time Prepositional Opener + Appositive. Provide exactly 3 short sentences: Sentence 1 has a clear Time prepositional phrase (e.g., before dawn, after midnight, during the storm). Sentence 2 defines the subject with 'is/was a/an/the [noun phrase]'. Sentence 3 has the main action.";
+      } else if (stage === "time" && needPart) {
+        stageSpec = "Stage 1 Culmination (Q3): Time Prepositional Opener + Appositive + Participial Phrase. Provide exactly 4 short sentences: Sentence 1 has a Time prepositional phrase. Sentence 2 defines the subject with 'is/was a/an/the [noun phrase]'. Sentence 3 has the main action. Sentence 4 has a secondary action for the subject to turn into an -ing or -ed participial phrase.";
+      } else if (stage === "place") {
+        stageSpec = "Stage 2 (Q4-6): Place Prepositional Opener + Appositive + Participial Phrase. Provide exactly 4 short sentences: Sentence 1 has a clear Place prepositional phrase (e.g., beneath the arches, behind the wall, inside the conservatory). Sentence 2 defines the subject with 'is/was a/an/the [noun phrase]'. Sentence 3 has the main action. Sentence 4 has a secondary action for the subject to turn into an -ing or -ed participial phrase.";
+      } else {
+        stageSpec = "Stage 3 (Q7+): Mixed Time + Place Openers + Appositive + Participial Phrase. Provide exactly 4 short sentences: Sentence 1 has both a Time and Place prepositional phrase. Sentence 2 defines the subject with 'is/was a/an/the [noun phrase]'. Sentence 3 has the main action. Sentence 4 has a secondary action to become an -ing or -ed participial phrase.";
+      }
+
+      const sentenceCount = needPart ? 4 : 3;
+      const promptText = `Generate ONE original 9th-grade Writing Revolution sentence-combining set. Do NOT use gnomes.
+${stageSpec}
+Keep the exact same named human subject doing all the action across all ${sentenceCount} short sentences.
+Return JSON only with keys: subject (string), appositiveIdentity (string), sentences (array of ${sentenceCount} strings), hint (string), keywords (array of 3-4 content words).`;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawJson) return null;
+        const parsed = JSON.parse(rawJson);
+        if (!parsed.subject || !Array.isArray(parsed.sentences) || parsed.sentences.length !== sentenceCount) return null;
+        const moves = stage === "time"
+          ? (needPart ? ["Time Opener", "Appositive", "Participial Phrase"] : ["Time Opener", "Appositive"])
+          : stage === "place"
+          ? ["Place Opener", "Appositive", "Participial Phrase"]
+          : ["Time + Place Openers", "Appositive", "Participial Phrase"];
+
+        return {
+          id: "ai_" + Date.now(),
+          subject: parsed.subject,
+          appositiveIdentity: parsed.appositiveIdentity || "",
+          moves,
+          sentences: parsed.sentences,
+          hint: parsed.hint || `Start with your ${stage} prepositional opener + comma, rename ${parsed.subject} with an appositive set off by commas on both sides, and complete the action.`,
+          keywords: Array.isArray(parsed.keywords) ? parsed.keywords : []
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    // =========================================================================
+    // RENDERING & UI UPDATES
+    // =========================================================================
+    function renderAll() {
+      const s = state.stage;
+      const needPart = requiresParticipial(state.qNum);
+      document.body.setAttribute("data-stage", s);
+
+      // Update Stepper
+      const stepTime = document.getElementById("step-time");
+      const stepPlace = document.getElementById("step-place");
+      const stepMixed = document.getElementById("step-mixed");
+
+      stepTime.className = "step-chip" + (s === "time" ? " active" : " done");
+      stepPlace.className = "step-chip" + (s === "place" ? " active" : (s === "mixed" ? " done" : ""));
+      stepMixed.className = "step-chip" + (s === "mixed" ? " active" : "");
+
+      // Update Header Badges
+      const stageLabels = {
+        time: needPart ? "Stage 1: Time + Appositive + Participial" : "Stage 1: Time + Appositive",
+        place: "Stage 2: Place + Appositive + Participial",
+        mixed: "Stage 3: Mixed + Appositive + Participial"
+      };
+      document.getElementById("q-badge").textContent = `Question ${state.qNum} • ${stageLabels[s]}`;
+      document.getElementById("subject-badge").textContent = `Subject: ${state.currentPrompt.subject}`;
+      document.getElementById("subject-reminder").textContent = `Keep ${state.currentPrompt.subject} doing all the action`;
+
+      // Show Q3 Participial Phrase Unlock Milestone
+      const milestoneEl = document.getElementById("milestone-pill");
+      milestoneEl.classList.toggle("visible", state.qNum === 3);
+
+      // Render Required Moves Badges (Appositive ALWAYS shown; Participial on Q3+)
+      const movesBar = document.getElementById("moves-bar");
+      movesBar.innerHTML = `<span class="moves-label">Required Moves:</span>`;
+      state.currentPrompt.moves.forEach(move => {
+        let cls = "role-time";
+        if (move.includes("Place") && !move.includes("Time")) cls = "role-place";
+        else if (move.includes("Mixed") || move.includes("Time + Place")) cls = "role-mixed";
+        else if (move.includes("Appositive")) cls = "role-app";
+        else if (move.includes("Participial")) cls = "role-part";
+
+        const badge = document.createElement("span");
+        badge.className = `role-tag ${cls}`;
+        badge.textContent = move;
+        movesBar.appendChild(badge);
+      });
+
+      // Always-Visible Formula Pill
+      const bannerEl = document.getElementById("formula-banner");
+      if (s === "time" && !needPart) {
+        bannerEl.innerHTML = `
+          Pattern: <span class="hl-time">[Time Opener]</span>, <strong>${state.currentPrompt.subject}</strong>, <span class="hl-app">[Appositive]</span>, [Main Verb...].
+        `;
+      } else if (s === "time" && needPart) {
+        bannerEl.innerHTML = `
+          Pattern: <span class="hl-time">[Time Opener]</span>, <strong>${state.currentPrompt.subject}</strong>, <span class="hl-app">[Appositive]</span>, [Main Verb...], <span class="hl-part">[-ing/-ed Phrase]</span>.
+        `;
+      } else if (s === "place") {
+        bannerEl.innerHTML = `
+          Pattern: <span class="hl-place">[Place Opener]</span>, <strong>${state.currentPrompt.subject}</strong>, <span class="hl-app">[Appositive]</span>, [Main Verb...], <span class="hl-part">[-ing/-ed Phrase]</span>.
+        `;
+      } else {
+        bannerEl.innerHTML = `
+          Pattern: <span class="hl-mixed">[Time/Place Opener]</span>, <strong>${state.currentPrompt.subject}</strong>, <span class="hl-app">[Appositive]</span>, [Main Verb...], <span class="hl-part">[-ing/-ed Phrase]</span> + <span class="hl-mixed">[Time/Place]</span>.
+        `;
+      }
+
+      // Render Chunked Source Sentences (3 for Q1-2, 4 for Q3+)
+      const stack = document.getElementById("sentences-stack");
+      stack.innerHTML = "";
+      state.currentPrompt.sentences.forEach((sent, idx) => {
+        const row = document.createElement("div");
+        row.className = "sentence-strip";
+        row.innerHTML = `
+          <div class="strip-num">${idx + 1}</div>
+          <div class="strip-text">${sent}</div>
+        `;
+        stack.appendChild(row);
+      });
+
+      // Render Starter Words Drawer
+      const chipsWrap = document.getElementById("word-chips");
+      chipsWrap.innerHTML = "";
+      STARTER_WORDS[s].forEach(word => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "word-chip";
+        chip.textContent = word + "...";
+        chip.onclick = () => insertStarterWord(word);
+        chipsWrap.appendChild(chip);
+      });
+
+      // Render Hint Content
+      document.getElementById("hint-content").textContent = state.currentPrompt.hint;
+
+      // Reset Input & Feedback for fresh question
+      const totalCount = state.currentPrompt.sentences.length;
+      const inputLabelSpan = document.querySelector('label[for="student-input"] span:first-child');
+      if (inputLabelSpan) {
+        inputLabelSpan.textContent = `Combine all ${totalCount} sentences into ONE smooth sentence:`;
+      }
+
+      const input = document.getElementById("student-input");
+      input.value = "";
+      input.placeholder = s === "time" && !needPart
+        ? `Example: After midnight, ${state.currentPrompt.subject}, [appositive], [main action]...`
+        : s === "time" && needPart
+        ? `Example: During the rainstorm, ${state.currentPrompt.subject}, [appositive], [main action], [-ing/-ed phrase]...`
+        : s === "place"
+        ? `Example: Behind the stone wall, ${state.currentPrompt.subject}, [appositive], [main action], [-ing/-ed phrase]...`
+        : `Example: At midnight inside the observatory, ${state.currentPrompt.subject}, [appositive], [main action], [-ing/-ed phrase]...`;
+
+      state.isSolved = false;
+      document.getElementById("btn-next").style.display = "none";
+      document.getElementById("btn-check").style.display = "inline-flex";
+
+      const fb = document.getElementById("feedback-panel");
+      fb.className = "feedback-panel";
+      fb.innerHTML = "";
+    }
+// ... existing code ... -->
+    async function swapCurrentPrompt() {
+      const aiPrompt = await fetchGeminiPrompt(state.stage, state.qNum);
+      state.currentPrompt = aiPrompt || pickPrompt(state.stage, state.qNum);
+      renderAll();
+    }
+
+    function restartSession() {
+      state.qNum = 1;
+      state.stage = "time";
+      state.isSolved = false;
+      state.savedList = [];
+      state.usedIds = [];
+      state.currentPrompt = pickPrompt("time", 1);
+
+      document.getElementById("saved-counter").textContent = "Saved: 0/6";
+      document.getElementById("shift-backdrop").classList.remove("open");
+      document.getElementById("saved-backdrop").classList.remove("open");
+      document.getElementById("drawer-formula").classList.remove("open");
+      document.getElementById("drawer-hint").classList.remove("open");
+      document.getElementById("btn-formula").classList.remove("active");
+      document.getElementById("btn-hint").classList.remove("active");
+
+      renderAll();
+
+      const fb = document.getElementById("feedback-panel");
+      fb.className = "feedback-panel pass visible";
+      fb.innerHTML = `<div class="fb-header">↺ Session Restarted &mdash; Back to Question 1 (Time Opener + Appositive)</div>`;
+      setTimeout(() => {
+        if (!state.isSolved && document.getElementById("student-input").value.trim() === "") {
+          fb.classList.remove("visible");
+        }
+      }, 2200);
+    }
+
+    // =========================================================================
+    // STRICT APPOSITIVE, PARTICIPIAL (Q3+) & OPENER MASTERY GATE EVALUATOR
+    // =========================================================================
+    async function evaluateWithGemini(raw) {
+      if (!apiKey) return null;
+      const needPart = requiresParticipial(state.qNum);
+      const reqList = [
+        "1) Combined into ONE complete, grammatically sound sentence (no fragments, run-ons, or comma splices).",
+        `2) Starts with a ${state.stage === "time" ? "Time" : state.stage === "place" ? "Place" : "Mixed Time + Place"} prepositional opener followed by a comma.`,
+        `3) Keeps "${state.currentPrompt.subject}" as the unified subject performing the action.`,
+        `4) Includes a properly punctuated appositive renaming "${state.currentPrompt.subject}" with commas on both sides.`,
+        needPart ? `5) Includes a participial phrase (-ing or -ed verb phrase) attached cleanly to "${state.currentPrompt.subject}" without dangling modifiers or comma splices.` : ""
+      ].filter(Boolean).join("\n");
+
+      const evalPrompt = `You are a strict, encouraging 9th-grade Writing Revolution English teacher.
+Source sentences:
+${state.currentPrompt.sentences.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+
+Required moves:
+${reqList}
+
+Student submission:
+"${raw}"
+
+Evaluate strictly. Return JSON only with:
+- pass (boolean)
+- goodPoints (array of short strings naming what worked)
+- fixPoints (array of specific, prescriptive error diagnoses quoting the student's words if pass is false; empty array if pass is true)
+- nextStep (1 concise action directive if pass is false; empty string if pass is true)`;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: evalPrompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) return null;
+        const parsed = JSON.parse(text);
+        if (typeof parsed.pass !== "boolean") return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    async function evaluateAttempt() {
+      const raw = document.getElementById("student-input").value.trim();
+      const prompt = state.currentPrompt;
+      const subject = prompt.subject;
+      const stage = state.stage;
+      const needPart = requiresParticipial(state.qNum);
+
+      // 1. Empty check
+      if (!raw) {
+        showFeedback(
+          false,
+          [],
+          [`Your writing box is empty. Combine all ${prompt.sentences.length} sentences into one smooth sentence.`],
+          needPart
+            ? "Start with your prepositional opener + comma, add your appositive, state the main verb, and finish with an -ing/-ed participial phrase."
+            : "Start with your prepositional opener followed by a comma, then add your appositive."
+        );
+        return;
+      }
+
+      // Check live Gemini evaluator first when available
+      const btnCheck = document.getElementById("btn-check");
+      const prevBtnHtml = btnCheck.innerHTML;
+      if (apiKey) {
+        btnCheck.disabled = true;
+        btnCheck.innerHTML = `<span>Checking...</span>`;
+      }
+      const aiResult = await evaluateWithGemini(raw);
+      if (apiKey) {
+        btnCheck.disabled = false;
+        btnCheck.innerHTML = prevBtnHtml;
+      }
+
+      if (aiResult) {
+        if (aiResult.pass) {
+          state.isSolved = true;
+          saveMasteredSentence(raw);
+          showFeedback(true, aiResult.goodPoints || ["All required moves executed accurately."], [], "");
+          document.getElementById("btn-check").style.display = "none";
+          document.getElementById("btn-next").style.display = "inline-flex";
+        } else {
+          showFeedback(
+            false,
+            aiResult.goodPoints || [],
+            aiResult.fixPoints || ["Check your comma boundaries and required moves."],
+            aiResult.nextStep || "Revise the highlighted issue and click Check Sentence again."
+          );
+        }
+        return;
+      }
+
+      // Built-in Local Rule-Based Evaluator
+      const goodPoints = [];
+      const fixPoints = [];
+
+      // 2. Single sentence & capitalization/punctuation check
+      if (!/^[A-Z]/.test(raw)) {
+        fixPoints.push(`Capitalization: Start your sentence with a capital letter (currently starts with "${raw.slice(0, 12)}...").`);
+      }
+
+      if (!/[.!?]$/.test(raw)) {
+        fixPoints.push(`End punctuation: Finish your sentence with a period.`);
+      }
+
+      const internalSentenceBreaks = raw.slice(0, -1).match(/[.!?]\s+[A-Z]/g);
+      if (internalSentenceBreaks || raw.includes(";")) {
+        fixPoints.push(`Single-sentence rule: Merge all ideas into ONE single sentence without mid-sentence periods or semicolons.`);
+      } else {
+        goodPoints.push("Combined into a single sentence.");
+      }
+
+      // Check for comma splice with "he/she/they" or repeated subject
+      const commaPronounSplice = new RegExp(`,\\s+(he|she|they|${subject})\\s+(is|was|are|were|[a-z]+ed)\\b`, "i");
+      if (commaPronounSplice.test(raw)) {
+        fixPoints.push(`Comma splice: Avoid joining a second full clause with just a comma and a subject/pronoun. Use an appositive noun phrase or an -ing/-ed participial phrase instead.`);
+      }
+
+      // 3. Opener & First Comma Check
+      const firstCommaIdx = raw.indexOf(",");
+      const lowerRaw = raw.toLowerCase();
+      const firstWord = lowerRaw.split(/[\s,]+/)[0];
+      const firstTwoWords = lowerRaw.split(/[\s,]+/).slice(0, 2).join(" ");
+
+      let hasValidOpenerPrep = false;
+      if (stage === "time") {
+        hasValidOpenerPrep = TIME_PREPS.includes(firstWord) || TIME_PREPS.includes(firstTwoWords);
+        if (!hasValidOpenerPrep) {
+          fixPoints.push(`Time opener needed: Your sentence starts with "${raw.split(/\s+/)[0]}", which is not a Time preposition. Start with a Time opener (e.g., After, Before, During, Until, Following).`);
+        }
+      } else if (stage === "place") {
+        hasValidOpenerPrep = PLACE_PREPS.includes(firstWord) || PLACE_PREPS.includes(firstTwoWords);
+        if (!hasValidOpenerPrep) {
+          fixPoints.push(`Place opener needed: Your sentence starts with "${raw.split(/\s+/)[0]}", which is not a Place preposition. Start with a Place opener (e.g., Behind, Inside, Beneath, Along, Across).`);
+        }
+      } else {
+        const startsTime = TIME_PREPS.includes(firstWord);
+        const startsPlace = PLACE_PREPS.includes(firstWord);
+        hasValidOpenerPrep = startsTime || startsPlace;
+        if (!hasValidOpenerPrep) {
+          fixPoints.push(`Mixed opener needed: Start your sentence with a Time or Place preposition (e.g., "At midnight inside..." or "Before dawn on...").`);
+        } else {
+          const hasTimeAnywhere = TIME_PREPS.some(p => new RegExp(`\\b${p}\\b`, "i").test(lowerRaw));
+          const hasPlaceAnywhere = PLACE_PREPS.some(p => new RegExp(`\\b${p}\\b`, "i").test(lowerRaw));
+          if (!hasTimeAnywhere || !hasPlaceAnywhere) {
+            fixPoints.push(`Missing Time + Place pair: Stage 3 requires BOTH a Time phrase and a Place phrase working together.`);
+          }
+        }
+      }
+
+      if (hasValidOpenerPrep) {
+        if (firstCommaIdx === -1 || firstCommaIdx > 65) {
+          fixPoints.push(`Missing opener comma: Place a comma right after your opening prepositional phrase before naming ${subject}.`);
+        } else {
+          const openerText = raw.slice(0, firstCommaIdx);
+          if (new RegExp(`\\b${subject}\\b`, "i").test(openerText)) {
+            fixPoints.push(`Opener structure: Keep "${subject}" out of the opener—put the prepositional phrase before the comma, then introduce "${subject}" right after the comma.`);
+          } else {
+            goodPoints.push(`Clean ${stage === "mixed" ? "Time + Place" : stage} opener ("${openerText},").`);
+          }
+        }
+      }
+
+      // 4. Unified Subject Check
+      const subjectRegex = new RegExp(`\\b${subject}\\b`, "i");
+      if (!subjectRegex.test(raw)) {
+        fixPoints.push(`Unified subject: Keep "${subject}" as the named subject performing the action.`);
+      } else {
+        goodPoints.push(`Kept ${subject} as the unified subject.`);
+      }
+
+      // 5. MANDATORY APPOSITIVE CHECK (Enforced on 100% of questions across all stages)
+      const identitySentence = prompt.sentences[1] || "";
+      const linkingClauseRegex = new RegExp(`\\b(${subject}|he|she)\\s+(is|was)\\s+(a|an|the)\\s+([^,.]+)`, "i");
+      const linkingMatch = raw.match(linkingClauseRegex);
+
+      const midAppositiveRegex = new RegExp(`\\b${subject}\\s*,\\s*(a|an|the)\\s+([^,]{3,55}),`, "i");
+      const endAppositiveRegex = /,\s*(a|an|the)\s+([^,.]{3,55})[.!?]$/i;
+      const missingClosingCommaRegex = new RegExp(`(\\b${subject}\\s*,\\s*(?:a|an|the)\\s+[a-z0-9'\\s-]{3,45})\\s+([a-z]{3,}(?:ed|ew|ook|ound|ought))\\b`, "i");
+      const missingCommaMatch = raw.match(missingClosingCommaRegex);
+
+      if (linkingMatch) {
+        fixPoints.push(`Appositive missing (still a full clause): Turn "${linkingMatch[0]}" into a noun phrase renaming ${subject} with commas on both sides (e.g., "${subject}, ${linkingMatch[3]} ${linkingMatch[4]}, [verb]").`);
+      } else if (midAppositiveRegex.test(raw) || endAppositiveRegex.test(raw)) {
+        goodPoints.push("Appositive noun phrase properly set off with commas.");
+      } else if (missingCommaMatch) {
+        fixPoints.push(`Missing closing appositive comma: Quote "${missingCommaMatch[1]}" — add a comma right before "${missingCommaMatch[2]}" to close your appositive.`);
+      } else {
+        const exampleRole = prompt.appositiveIdentity ? `, ${prompt.appositiveIdentity},` : `, a/the [role],`;
+        fixPoints.push(`Appositive required: Rename "${subject}" using the identity detail from Sentence 2 ("${identitySentence}") set off with commas on both sides (e.g., "${subject}${exampleRole} [verb]").`);
+      }
+
+      // 6. PARTICIPIAL PHRASE CHECK (Enforced on Q3 onward)
+      if (needPart) {
+        const participialCommaRegex = /,\s*[a-z]{3,}(?:ing|ed|en)\b/i;
+        const anyParticipleVerb = /\b(?!during|following|morning|evening|ceiling|building|binding|bindings|magnifying)[a-z]{3,}(?:ing|ed|en)\b/i;
+        const danglingStartIng = /^[A-Z][a-z]+ing\b/;
+
+        if (danglingStartIng.test(raw) && !hasValidOpenerPrep) {
+          fixPoints.push(`Opener order: Start with your prepositional opener first, then attach the participial phrase to ${subject} after the main verb.`);
+        } else if (participialCommaRegex.test(raw)) {
+          goodPoints.push("Participial phrase cleanly attached with a comma.");
+        } else if (anyParticipleVerb.test(raw)) {
+          fixPoints.push(`Participial phrase punctuation: Turn Sentence 4 ("${prompt.sentences[3] || ""}") into an -ing or -ed phrase set off with a comma (e.g., ", [verb-ing] ...").`);
+        } else {
+          fixPoints.push(`Participial phrase required (Q3+): Turn Sentence 4 ("${prompt.sentences[3] || ""}") into a secondary -ing or -ed verb phrase attached to ${subject} with a comma.`);
+        }
+      }
+
+      // 7. Content Preservation Check
+      const matchedKeywords = prompt.keywords.filter(kw => new RegExp(`\\b${kw}`, "i").test(raw));
+      const minKeywords = needPart ? 3 : 2;
+      if (prompt.keywords.length > 0 && matchedKeywords.length < minKeywords) {
+        fixPoints.push(`Missing detail: Make sure all ${prompt.sentences.length} source sentences are woven into your combined sentence.`);
+      }
+
+      // Decision
+      if (fixPoints.length === 0) {
+        state.isSolved = true;
+        saveMasteredSentence(raw);
+        showFeedback(true, goodPoints, [], "");
+        document.getElementById("btn-check").style.display = "none";
+        document.getElementById("btn-next").style.display = "inline-flex";
+      } else {
+        const nextAction = fixPoints[0].split(":")[0];
+        showFeedback(false, goodPoints, fixPoints, `Fix the issue above (${nextAction}) and click Check Sentence again.`);
+      }
+    }
+
+    function showFeedback(isPass, goodPoints, fixPoints, nextStepText) {
+      const fb = document.getElementById("feedback-panel");
+      const needPart = requiresParticipial(state.qNum);
+      const passSummary = needPart
+        ? "Mastered! Opener + Appositive + Participial Phrase nailed and saved to your log."
+        : "Mastered! Opener + Appositive nailed and saved to your log.";
+
+      if (isPass) {
+        fb.className = "feedback-panel pass visible";
+        fb.innerHTML = `
+          <div class="fb-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>${passSummary}</span>
+          </div>
+          <ul class="fb-list">
+            <li><span class="fb-tag good">What worked</span> ${goodPoints.join(" ")}</li>
+          </ul>
+        `;
+      } else {
+        fb.className = "feedback-panel fail visible";
+        const goodHtml = goodPoints.length
+          ? `<li><span class="fb-tag good">What worked</span> ${goodPoints.join(" ")}</li>`
+          : "";
+        const fixHtml = fixPoints
+          .map(f => `<li><span class="fb-tag fix">What to fix</span> ${f}</li>`)
+          .join("");
+        fb.innerHTML = `
+          <div class="fb-header">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>Almost there &mdash; revise before moving on:</span>
+          </div>
+          <ul class="fb-list">
+            ${goodHtml}
+            ${fixHtml}
+            <li><span class="fb-tag next">Try again</span> ${nextStepText}</li>
+          </ul>
+        `;
+      }
+    }
+
+    // =========================================================================
+    // PROGRESSION & DRAMATIC STAGE SHIFT
+    // =========================================================================
+    async function advanceQuestion() {
+      const prevStage = state.stage;
+      state.qNum += 1;
+      const nextStage = getStageForQuestion(state.qNum);
+      state.stage = nextStage;
+
+      const aiPrompt = await fetchGeminiPrompt(nextStage, state.qNum);
+      state.currentPrompt = aiPrompt || pickPrompt(nextStage, state.qNum);
+      renderAll();
+
+      // Trigger Dramatic Stage Shift when moving from Time (Q3) to Place (Q4)
+      if (prevStage === "time" && nextStage === "place") {
+        openShiftModal(false);
+      }
+    }
+
+    function openShiftModal(isPreview) {
+      state.previewMode = isPreview;
+      document.getElementById("shift-backdrop").classList.add("open");
+    }
+
+    function closeShiftModal() {
+      document.getElementById("shift-backdrop").classList.remove("open");
+    }
+
+    // =========================================================================
+    // SAVED LOG & GOOGLE CLASSROOM CLIPBOARD EXPORT
+    // =========================================================================
+    function saveMasteredSentence(sentence) {
+      const existingIdx = state.savedList.findIndex(item => item.qNum === state.qNum);
+      const movesLabel = requiresParticipial(state.qNum)
+        ? `${state.stage.toUpperCase()} + APPOSITIVE + PARTICIPIAL`
+        : `${state.stage.toUpperCase()} + APPOSITIVE`;
+      const entry = {
+        qNum: state.qNum,
+        stage: movesLabel,
+        subject: state.currentPrompt.subject,
+        sentence
+      };
+      if (existingIdx >= 0) {
+        state.savedList[existingIdx] = entry;
+      } else {
+        state.savedList.push(entry);
+      }
+      document.getElementById("saved-counter").textContent = `Saved: ${state.savedList.length}/6`;
+    }
+
+    function toggleDrawer(drawerId, btnId) {
+      const drawer = document.getElementById(drawerId);
+      const btn = document.getElementById(btnId);
+      const isOpen = drawer.classList.contains("open");
+      drawer.classList.toggle("open", !isOpen);
+      btn.classList.toggle("active", !isOpen);
+    }
+
+    function insertStarterWord(word) {
+      const input = document.getElementById("student-input");
+      const current = input.value.trim();
+      if (!current) {
+        input.value = word + " ";
+      } else {
+        input.value = word + " " + current.charAt(0).toLowerCase() + current.slice(1);
+      }
+      input.focus();
+    }
+
+    function openSavedModal() {
+      const container = document.getElementById("saved-list-container");
+      document.getElementById("copy-status").textContent = "";
+      if (state.savedList.length === 0) {
+        container.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--ink-muted); background: var(--bg-canvas); border-radius: 12px; font-size: 14px;">No mastered sentences yet. Complete Question 1 to add your first sentence!</div>`;
+      } else {
+        container.innerHTML = state.savedList.map(item => `
+          <div class="saved-item">
+            <div class="saved-meta">Question ${item.qNum} &bull; ${item.stage} &bull; Subject: ${item.subject}</div>
+            <div style="font-weight: 600; color: var(--ink-primary);">${item.sentence}</div>
+          </div>
+        `).join("");
+      }
+      document.getElementById("saved-backdrop").classList.add("open");
+    }
+
+    function closeSavedModal() {
+      document.getElementById("saved-backdrop").classList.remove("open");
+    }
+
+    function copyForClassroom() {
+      if (state.savedList.length === 0) {
+        document.getElementById("copy-status").textContent = "Master at least 1 sentence first!";
+        return;
+      }
+      const formatted = [
+        "Writing Lab: Sentence Combining (Prepositional Openers + Appositives + Participial Phrases)",
+        "-----------------------------------------------------------------------------------",
+        ...state.savedList.map(item => `Q${item.qNum} [${item.stage}]: ${item.sentence}`)
+      ].join("\n");
+
+      const temp = document.createElement("textarea");
+      temp.value = formatted;
+      temp.style.position = "fixed";
+      temp.style.opacity = "0";
+      document.body.appendChild(temp);
+      temp.select();
+      try {
+        document.execCommand("copy");
+        document.getElementById("copy-status").textContent = "✓ Copied! Ready to paste into Google Classroom.";
+      } catch {
+        document.getElementById("copy-status").textContent = "Select and copy your sentences above.";
+      }
+      document.body.removeChild(temp);
+    }
+
+    // Boot immediately with locked Question 1
+    window.addEventListener("DOMContentLoaded", () => {
+      state.currentPrompt = pickPrompt("time", 1);
+      renderAll();
+    });
+  </script>
+</body>
+</html>
